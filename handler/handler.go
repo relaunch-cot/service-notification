@@ -10,6 +10,7 @@ import (
 
 type INotificationHandler interface {
 	SendNotification(ctx *context.Context, in *pb.SendNotificationRequest) error
+	GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error)
 }
 type resource struct {
 	repositories *repositories.Repositories
@@ -23,6 +24,15 @@ func (r *resource) SendNotification(ctx *context.Context, in *pb.SendNotificatio
 	}
 
 	return nil
+}
+
+func (r *resource) GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error) {
+	notification, err := r.repositories.Mysql.GetNotification(ctx, notificationId)
+	if err != nil {
+		return nil, err
+	}
+
+	return notification, nil
 }
 
 func NewNotificationHandler(repositories *repositories.Repositories) INotificationHandler {

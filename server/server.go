@@ -22,6 +22,15 @@ func (r *notificationResource) SendNotification(ctx context.Context, in *pb.Send
 	return &empty.Empty{}, nil
 }
 
+func (r *notificationResource) GetNotification(ctx context.Context, in *pb.GetNotificationRequest) (*pb.GetNotificationResponse, error) {
+	getNotificationResponse, err := r.handler.Notification.GetNotification(&ctx, in.NotificationId)
+	if err != nil {
+		return nil, err
+	}
+
+	return getNotificationResponse, nil
+}
+
 func NewNotificationServer(handler *handler.Handlers) pb.NotificationServiceServer {
 	return &notificationResource{handler: handler}
 }

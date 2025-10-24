@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	pbBaseModels "github.com/relaunch-cot/lib-relaunch-cot/proto/base_models"
 	pb "github.com/relaunch-cot/lib-relaunch-cot/proto/notification"
 	"github.com/relaunch-cot/lib-relaunch-cot/repositories/mysql"
 	"google.golang.org/grpc/codes"
@@ -16,6 +17,7 @@ type mysqlResource struct {
 
 type IMysqlNotification interface {
 	SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error
+	GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error)
 }
 
 func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error {
@@ -28,6 +30,24 @@ func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId st
 	}
 
 	return nil
+}
+
+func (r *mysqlResource) GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error) {
+	var notification pbBaseModels.Notification
+
+	baseQuery := `SELECT n.notificationId, n.senderId, n.receiverId, n.title, n.content, n.type, n.createdAt FROM notifications n WHERE n.notificationId = ?`
+
+	row := mysql.DB.QueryRowContext(*ctx, baseQuery, notificationId)
+	err := row.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.CreatedAt)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	response := &pb.GetNotificationResponse{
+		Notification: &notification,
+	}
+
+	return response, nil
 }
 
 func NewMysqlRepository(client *mysql.Client) IMysqlNotification {
