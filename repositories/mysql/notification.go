@@ -24,7 +24,7 @@ type IMysqlNotification interface {
 func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error {
 	createdAt := time.Now()
 
-	baseQuery := `INSERT INTO notifications (notificationId, senderId, receiverId, title, content, type,  createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	baseQuery := `INSERT INTO notifications (notificationId, senderId, receiverId, title, content, type, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	_, err := mysql.DB.ExecContext(*ctx, baseQuery, notificationId, in.SenderId, in.ReceiverId, in.Title, in.Content, in.Type, createdAt)
 	if err != nil {
 		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
@@ -36,10 +36,22 @@ func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId st
 func (r *mysqlResource) GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error) {
 	var notification pbBaseModels.Notification
 
-	baseQuery := `SELECT n.notificationId, n.senderId, n.receiverId, n.title, n.content, n.type, n.createdAt FROM notifications n WHERE n.notificationId = ?`
+	baseQuery := `
+SELECT
+	n.notificationId,
+	n.senderId, 
+	n.receiverId, 
+	n.title,
+	n.content,
+	n.type,
+    s.name AS senderName,
+	n.createdAt
+FROM notifications n 
+	JOIN users s ON userId = n.senderId
+WHERE n.notificationId = ?`
 
 	row := mysql.DB.QueryRowContext(*ctx, baseQuery, notificationId)
-	err := row.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.CreatedAt)
+	err := row.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.SenderName, &notification.CreatedAt)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "error with database. Details: "+err.Error())
 	}
@@ -54,7 +66,20 @@ func (r *mysqlResource) GetNotification(ctx *context.Context, notificationId str
 func (r *mysqlResource) GetAllNotificationsFromUser(ctx *context.Context, userId string) (*pb.GetAllNotificationsFromUserResponse, error) {
 	var notifications []*pbBaseModels.Notification
 
-	baseQuery := `SELECT n.notificationId, n.senderId, n.receiverId, n.title, n.content, n.type, n.createdAt FROM notifications n WHERE n.receiverId = ? ORDER BY n.createdAt DESC`
+	baseQuery := `
+SELECT 
+	n.notificationId, 
+    n.senderId, 
+    n.receiverId, 
+    n.title, 
+    n.content, 
+    n.type, 
+    s.name AS senderName,
+    n.createdAt 
+FROM notifications n 
+	JOIN users s ON userId = n.senderId
+WHERE n.receiverId = ? 
+ORDER BY n.createdAt DESC`
 
 	rows, err := mysql.DB.QueryContext(*ctx, baseQuery, userId)
 	if err != nil {
@@ -64,7 +89,7 @@ func (r *mysqlResource) GetAllNotificationsFromUser(ctx *context.Context, userId
 
 	for rows.Next() {
 		var notification pbBaseModels.Notification
-		err := rows.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.CreatedAt)
+		err := rows.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.SenderName, &notification.CreatedAt)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "error with database. Details: "+err.Error())
 		}
