@@ -31,6 +31,15 @@ func (r *notificationResource) GetNotification(ctx context.Context, in *pb.GetNo
 	return getNotificationResponse, nil
 }
 
+func (r *notificationResource) GetAllNotificationsFromUser(ctx context.Context, in *pb.GetAllNotificationsFromUserRequest) (*pb.GetAllNotificationsFromUserResponse, error) {
+	getAllNotificationsFromUserResponse, err := r.handler.Notification.GetAllNotificationsFromUser(&ctx, in.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	return getAllNotificationsFromUserResponse, nil
+}
+
 func NewNotificationServer(handler *handler.Handlers) pb.NotificationServiceServer {
 	return &notificationResource{handler: handler}
 }

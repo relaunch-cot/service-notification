@@ -18,6 +18,7 @@ type mysqlResource struct {
 type IMysqlNotification interface {
 	SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error
 	GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error)
+	GetAllNotificationsFromUser(ctx *context.Context, userId string) (*pb.GetAllNotificationsFromUserResponse, error)
 }
 
 func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error {
@@ -45,6 +46,33 @@ func (r *mysqlResource) GetNotification(ctx *context.Context, notificationId str
 
 	response := &pb.GetNotificationResponse{
 		Notification: &notification,
+	}
+
+	return response, nil
+}
+
+func (r *mysqlResource) GetAllNotificationsFromUser(ctx *context.Context, userId string) (*pb.GetAllNotificationsFromUserResponse, error) {
+	var notifications []*pbBaseModels.Notification
+
+	baseQuery := `SELECT n.notificationId, n.senderId, n.receiverId, n.title, n.content, n.type, n.createdAt FROM notifications n WHERE n.receiverId = ? ORDER BY n.createdAt DESC`
+
+	rows, err := mysql.DB.QueryContext(*ctx, baseQuery, userId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var notification pbBaseModels.Notification
+		err := rows.Scan(&notification.NotificationId, &notification.SenderId, &notification.ReceiverId, &notification.Title, &notification.Content, &notification.Type, &notification.CreatedAt)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "error with database. Details: "+err.Error())
+		}
+		notifications = append(notifications, &notification)
+	}
+
+	response := &pb.GetAllNotificationsFromUserResponse{
+		Notifications: notifications,
 	}
 
 	return response, nil
