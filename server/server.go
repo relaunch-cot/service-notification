@@ -40,6 +40,24 @@ func (r *notificationResource) GetAllNotificationsFromUser(ctx context.Context, 
 	return getAllNotificationsFromUserResponse, nil
 }
 
+func (r *notificationResource) DeleteNotification(ctx context.Context, in *pb.DeleteNotificationRequest) (*empty.Empty, error) {
+	err := r.handler.Notification.DeleteNotification(&ctx, in.NotificationId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (r *notificationResource) DeleteAllNotificationsFromUser(ctx context.Context, in *pb.DeleteAllNotificationsFromUserRequest) (*empty.Empty, error) {
+	err := r.handler.Notification.DeleteAllNotificationsFromUser(&ctx, in.UserId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}
+
 func NewNotificationServer(handler *handler.Handlers) pb.NotificationServiceServer {
 	return &notificationResource{handler: handler}
 }

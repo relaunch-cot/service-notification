@@ -19,6 +19,8 @@ type IMysqlNotification interface {
 	SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error
 	GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error)
 	GetAllNotificationsFromUser(ctx *context.Context, userId string) (*pb.GetAllNotificationsFromUserResponse, error)
+	DeleteNotification(ctx *context.Context, notificationId string) error
+	DeleteAllNotificationsFromUser(ctx *context.Context, userId string) error
 }
 
 func (r *mysqlResource) SendNotification(ctx *context.Context, notificationId string, in *pb.SendNotificationRequest) error {
@@ -101,6 +103,59 @@ ORDER BY n.createdAt DESC`
 	}
 
 	return response, nil
+}
+
+func (r *mysqlResource) DeleteNotification(ctx *context.Context, notificationId string) error {
+	queryValidate := `SELECT COUNT(*) FROM notifications WHERE notificationId = ?`
+	var count int
+	err := mysql.DB.QueryRowContext(*ctx, queryValidate, notificationId).Scan(&count)
+	if err != nil {
+		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	if count == 0 {
+		return status.Error(codes.NotFound, "notification already deleted or does not exist")
+	}
+
+	baseQuery := `DELETE FROM notifications WHERE notificationId = ?`
+	_, err = mysql.DB.ExecContext(*ctx, baseQuery, notificationId)
+	if err != nil {
+		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	return nil
+}
+
+func (r *mysqlResource) DeleteAllNotificationsFromUser(ctx *context.Context, userId string) error {
+	queryValidateUser := `SELECT * FROM users WHERE userId = ?`
+
+	rows, err := mysql.DB.QueryContext(*ctx, queryValidateUser, userId)
+	if err != nil {
+		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	if !rows.Next() {
+		return status.Error(codes.NotFound, "user does not exist")
+	}
+
+	queryValidate := `SELECT COUNT(*) FROM notifications WHERE receiverId = ?`
+	var count int
+	err = mysql.DB.QueryRowContext(*ctx, queryValidate, userId).Scan(&count)
+	if err != nil {
+		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	if count == 0 {
+		return status.Error(codes.NotFound, "no notifications found for this user")
+	}
+
+	baseQuery := `DELETE FROM notifications WHERE receiverId = ?`
+	_, err = mysql.DB.ExecContext(*ctx, baseQuery, userId)
+	if err != nil {
+		return status.Error(codes.Internal, "error with database. Details: "+err.Error())
+	}
+
+	return nil
 }
 
 func NewMysqlRepository(client *mysql.Client) IMysqlNotification {

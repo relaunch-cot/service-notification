@@ -12,6 +12,8 @@ type INotificationHandler interface {
 	SendNotification(ctx *context.Context, in *pb.SendNotificationRequest) error
 	GetNotification(ctx *context.Context, notificationId string) (*pb.GetNotificationResponse, error)
 	GetAllNotificationsFromUser(ctx *context.Context, userId string) (*pb.GetAllNotificationsFromUserResponse, error)
+	DeleteNotification(ctx *context.Context, notificationId string) error
+	DeleteAllNotificationsFromUser(ctx *context.Context, userId string) error
 }
 type resource struct {
 	repositories *repositories.Repositories
@@ -43,6 +45,24 @@ func (r *resource) GetAllNotificationsFromUser(ctx *context.Context, userId stri
 	}
 
 	return notifications, nil
+}
+
+func (r *resource) DeleteNotification(ctx *context.Context, notificationId string) error {
+	err := r.repositories.Mysql.DeleteNotification(ctx, notificationId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *resource) DeleteAllNotificationsFromUser(ctx *context.Context, userId string) error {
+	err := r.repositories.Mysql.DeleteAllNotificationsFromUser(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewNotificationHandler(repositories *repositories.Repositories) INotificationHandler {
